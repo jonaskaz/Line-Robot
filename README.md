@@ -1,2 +1,2 @@
 # Line-Robot
-Principles of Integrate Engineering Project 3 Line Following Robot
+Principles of Integrated Engineering Project 3 Line Following Robot
