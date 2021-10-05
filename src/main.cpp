@@ -1,26 +1,36 @@
 #include <ArduinoJson.h>
-#include <AFMotor.h>
+#include <Adafruit_MotorShield.h>
+#include <SPI.h>
 
 
 #define SENSORPIN1 A0 // Left
 #define SENSORPIN2 A1 // Right
 #define NUMREADINGS 3 // Number of readings to average
 
-int maxFloor = 100; // Likely not needed
-int minTape = 400; // Determined experimentally
+const int maxFloor = 100; // Likely not needed
+const int minTape = 400; // Determined experimentally
+const int turnAdd = 20;
 int motorSpeed = 100;
-int turnSpeed = 50;
+int turnSpeed = 100;
+int integralGain = 1;
+int integral = 0;
+unsigned long errorTime = -1;
+unsigned long lastTime;
 
-AF_DCMotor motorRight(1);
-AF_DCMotor motorLeft(2);
+
+Adafruit_MotorShield AFMS = Adafruit_MotorShield();
+
+Adafruit_DCMotor *motorRight = AFMS.getMotor(1);
+Adafruit_DCMotor *motorLeft = AFMS.getMotor(1);
+
 
 void driveForward() {
-    motorRight.setSpeed(motorSpeed);
-    motorLeft.setSpeed(motorSpeed);
-    motorRight.run(FORWARD);
-    motorLeft.run(FORWARD);
-    motorRight.run(RELEASE);
-    motorLeft.run(RELEASE);
+    motorRight->setSpeed(motorSpeed);
+    motorLeft->setSpeed(motorSpeed);
+    motorRight->run(FORWARD);
+    motorLeft->run(FORWARD);
+    motorRight->run(RELEASE);
+    motorLeft->run(RELEASE);
 }
 
 void setup() {
@@ -42,34 +52,54 @@ bool isOffTape(int sensorPin) {
 }
 
 void turnLeft() {
-    motorRight.setSpeed(turnSpeed);
-    motorLeft.setSpeed(turnSpeed);
-    motorRight.run(FORWARD);
-    motorLeft.run(BACKWARD);
-    motorRight.run(RELEASE);
-    motorLeft.run(RELEASE);
+    motorRight->setSpeed(turnSpeed+integral+turnAdd);
+    motorLeft->setSpeed(turnSpeed);
+    motorRight->run(RELEASE);
+    motorLeft->run(RELEASE);
 }
 
 void turnRight() {
-    motorRight.setSpeed(turnSpeed);
-    motorLeft.setSpeed(turnSpeed);
-    motorRight.run(BACKWARD);
-    motorLeft.run(FORWARD);
-    motorRight.run(RELEASE);
-    motorLeft.run(RELEASE);
+    motorRight->setSpeed(turnSpeed);
+    motorLeft->setSpeed(turnSpeed+integral+turnAdd);
+    motorRight->run(RELEASE);
+    motorLeft->run(RELEASE);
 }
 
-void loop() {;
-    if (isOffTape(SENSORPIN1)) {
-        driveForward();
-    }
+void updateIntegral() {
+    if (int(errorTime) != -1) {
+            errorTime += millis()-lastTime;
+            lastTime = millis();
+            integral = errorTime * integralGain;
+        }
     else {
-        turnLeft();
+        errorTime = 0;
     }
-    if (isOffTape(SENSORPIN2)) {
-        driveForward();
+}
+
+void resetIntegral() {
+    if (isOffTape(SENSORPIN1) && isOffTape(SENSORPIN2)) {
+        errorTime = -1;
     }
-    else {
-        turnRight();
+}
+
+void loop() {
+    while (true) {
+        resetIntegral();
+        if (isOffTape(SENSORPIN1)) {
+            driveForward();
+        }
+        else {
+            updateIntegral();
+            turnLeft();
+            continue;
+        }
+        if (isOffTape(SENSORPIN2)) {
+            driveForward();
+        }
+        else {
+            updateIntegral();
+            turnRight();
+        }
     }
+    
 }
