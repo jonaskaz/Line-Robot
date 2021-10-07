@@ -12,10 +12,15 @@ const int minTape = 400; // Determined experimentally
 const int turnAdd = 20;
 int motorSpeed = 100;
 int turnSpeed = 100;
-int integralGain = 1;
-int integral = 0;
-unsigned long errorTime = -1;
-unsigned long lastTime;
+
+int kP = 1;
+int kI = 1;
+int kD = 1;
+int P = 0;
+int I = 0;
+int D = 0;
+int lastError = 0;
+float pidSpeed = 0;
 
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
@@ -38,68 +43,31 @@ void setup() {
     driveForward();
 }
 
-int getReadings(int numReadings, int sensorPin) {
+int getReadings(int sensorPin) {
     int senseTotal = 0;
-    for (int i=0; i < numReadings; i++) {
+    for (int i=0; i < NUMREADINGS; i++) {
         senseTotal+= analogRead(sensorPin);
     }
-    return int(senseTotal/numReadings);
+    return int(senseTotal/NUMREADINGS);
 }
 
-bool isOffTape(int sensorPin) {
-    int sensorRead = getReadings(NUMREADINGS, sensorPin);
-    return sensorRead <= minTape;
+int getError() {
+    return getReadings(SENSORPIN1) - getReadings(SENSORPIN2);
 }
 
-void turnLeft() {
-    motorRight->setSpeed(turnSpeed+integral+turnAdd);
-    motorLeft->setSpeed(turnSpeed);
-    motorRight->run(RELEASE);
-    motorLeft->run(RELEASE);
+void updatePID(int error) {
+    P = error;
+    I += error;
+    D = error-lastError;
+    lastError=error;
 }
 
-void turnRight() {
-    motorRight->setSpeed(turnSpeed);
-    motorLeft->setSpeed(turnSpeed+integral+turnAdd);
-    motorRight->run(RELEASE);
-    motorLeft->run(RELEASE);
-}
-
-void updateIntegral() {
-    if (int(errorTime) != -1) {
-            errorTime += millis()-lastTime;
-            lastTime = millis();
-            integral = errorTime * integralGain;
-        }
-    else {
-        errorTime = 0;
-    }
-}
-
-void resetIntegral() {
-    if (isOffTape(SENSORPIN1) && isOffTape(SENSORPIN2)) {
-        errorTime = -1;
-    }
+void updateMotorSpeed() {
+    pidSpeed = int(kP*P + kI*I + kD*D);
+    motorRight->setSpeed(motorSpeed + pidSpeed);
 }
 
 void loop() {
-    while (true) {
-        resetIntegral();
-        if (isOffTape(SENSORPIN1)) {
-            driveForward();
-        }
-        else {
-            updateIntegral();
-            turnLeft();
-            continue;
-        }
-        if (isOffTape(SENSORPIN2)) {
-            driveForward();
-        }
-        else {
-            updateIntegral();
-            turnRight();
-        }
-    }
-    
+    updatePID(getError());
+    updateMotorSpeed();
 }
