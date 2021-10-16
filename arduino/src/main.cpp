@@ -7,15 +7,14 @@
 #define SENSORPIN2 A1 // Right
 #define NUMREADINGS 3 // Number of readings to average
 
-const int maxFloor = 100; // Likely not needed
-const int minTape = 400; // Determined experimentally
-const int turnAdd = 20;
-int motorSpeed = 35;
-int errorOffset = 15;
-
+float motorSpeed = 35;
+float errorOffset = 15;
 float kP = 0.05;
 float kI = 0.001;
 float kD = 0.05;
+
+float consts[] = {motorSpeed, errorOffset, kP, kI, kD};
+
 float P = 0;
 float I = 0;
 float D = 0;
@@ -25,14 +24,14 @@ float pidSpeed = 0;
 
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 
-Adafruit_DCMotor *motorRight = AFMS.getMotor(1);
-Adafruit_DCMotor *motorLeft = AFMS.getMotor(2);
+Adafruit_DCMotor *motorRight = AFMS.getMotor(3);
+Adafruit_DCMotor *motorLeft = AFMS.getMotor(4);
 
 
 void driveForward() {
     motorRight->setSpeed(motorSpeed);
     motorLeft->setSpeed(motorSpeed);
-    motorRight->run(FORWARD);
+    motorRight->run(BACKWARD);
     motorLeft->run(FORWARD);
 }
 
@@ -66,18 +65,31 @@ void updatePID(int error) {
 }
 
 void updateMotorSpeed() {
-    // Serial.println(P);
-    // Serial.println(I);
-    // Serial.println(D);
     pidSpeed = kP*P + kI*I + kD*D;
-    Serial.println(pidSpeed);
-    // pidSpeed = constrain(pidSpeed, 0, 30);
+    pidSpeed = constrain(pidSpeed, 0, motorSpeed-pidSpeed);
     motorRight->setSpeed(motorSpeed + 0.5*pidSpeed);
     motorLeft->setSpeed(motorSpeed - 0.5*pidSpeed);
 }
 
-void loop() {
-    updatePID(getError());
-    updateMotorSpeed();
+void setConsts() {
+    motorSpeed = consts[0];
+    errorOffset = consts[1];
+    kP = consts[2];
+    kI = consts[3];
+    kD = consts[4];
+}
 
+void updateFromSerial() {
+    if (Serial.available() > 3) {
+        int key = Serial.parseInt();
+        float value = Serial.parseFloat();
+        consts[key] = value;
+    }
+    setConsts();
+}
+
+void loop() {
+    //updatePID(getError());
+    //updateMotorSpeed(); 
+    updateFromSerial();
 }
