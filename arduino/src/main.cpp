@@ -7,11 +7,11 @@
 #define SENSORPIN2 A1 // Right
 #define NUMREADINGS 3 // Number of readings to average
 
-float motorSpeed = 35;
+float motorSpeed = 25;
 float errorOffset = 15;
 float kP = 0.05;
-float kI = 0.001;
-float kD = 0.05;
+float kI = 0.0;
+float kD = 0.0;
 
 float consts[] = {motorSpeed, errorOffset, kP, kI, kD};
 
@@ -66,9 +66,9 @@ void updatePID(int error) {
 
 void updateMotorSpeed() {
     pidSpeed = kP*P + kI*I + kD*D;
-    pidSpeed = constrain(pidSpeed, 0, motorSpeed-pidSpeed);
-    motorRight->setSpeed(motorSpeed + 0.5*pidSpeed);
-    motorLeft->setSpeed(motorSpeed - 0.5*pidSpeed);
+    pidSpeed = constrain(pidSpeed, 0-motorSpeed-pidSpeed, motorSpeed-pidSpeed);
+    motorRight->setSpeed(motorSpeed + pidSpeed);
+    motorLeft->setSpeed(motorSpeed - pidSpeed);
 }
 
 void setConsts() {
@@ -89,7 +89,7 @@ void updateFromSerial() {
 }
 
 void loop() {
-    //updatePID(getError());
-    //updateMotorSpeed(); 
+    updatePID(getError());
+    updateMotorSpeed();
     updateFromSerial();
 }
