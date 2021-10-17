@@ -5,10 +5,12 @@
 
 #define SENSORPIN1 A0 // Left
 #define SENSORPIN2 A1 // Right
+#define SENSORPIN3 A2 // Middle
 #define NUMREADINGS 3 // Number of readings to average
 
 float motorSpeed = 25;
-float errorOffset = 15;
+float errorOffset = 25;
+float middleSensorThresh = 361;
 float kP = 0.05;
 float kI = 0.0;
 float kD = 0.0;
@@ -49,8 +51,24 @@ int getReadings(int sensorPin) {
     return int(senseTotal/NUMREADINGS);
 }
 
+int getMidSensorReading() {
+    int val = getReadings(SENSORPIN3);
+    Serial.println(val);
+    if (val<middleSensorThresh){
+        return 0;
+    }
+    return val*4;
+}
+
 int getError() {
     int read = getReadings(SENSORPIN1) - getReadings(SENSORPIN2);
+    
+    if (read >= 0) {
+        read -= getMidSensorReading();
+    }
+    else {
+        read += getMidSensorReading();
+    }
     if (abs(read)<errorOffset) {
         return 0;
     }
