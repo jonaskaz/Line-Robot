@@ -8,12 +8,13 @@
 #define SENSORPIN3 A2 // Middle
 #define NUMREADINGS 3 // Number of readings to average
 
-float motorSpeed = 25;
+float motorSpeed = 40;
 float errorOffset = 25;
-float middleSensorThresh = 361;
+float middleSensorThresh = 100;
+int errorDirection = 1;
 float kP = 0.05;
-float kI = 0.0;
-float kD = 0.0;
+float kI = 0.000;
+float kD = 0.05;
 
 float consts[] = {motorSpeed, errorOffset, kP, kI, kD};
 
@@ -53,26 +54,29 @@ int getReadings(int sensorPin) {
 
 int getMidSensorReading() {
     int val = getReadings(SENSORPIN3);
-    Serial.println(val);
-    if (val<middleSensorThresh){
+    if (val>middleSensorThresh){
         return 0;
     }
-    return val*4;
+    return val;
+}
+
+void setErrorDirection(int outsideError) {
+    if (outsideError >= errorOffset) {
+        errorDirection = 1;
+    }
+    else if (outsideError <= -1*errorOffset) {
+        errorDirection = -1;
+    }
 }
 
 int getError() {
-    int read = getReadings(SENSORPIN1) - getReadings(SENSORPIN2);
-    
-    if (read >= 0) {
-        read -= getMidSensorReading();
-    }
-    else {
-        read += getMidSensorReading();
-    }
-    if (abs(read)<errorOffset) {
+    int outsideError = getReadings(SENSORPIN1) - getReadings(SENSORPIN2);
+    setErrorDirection(outsideError);
+    int error = (abs(outsideError) + getMidSensorReading()) * errorDirection;
+    if (abs(error)<errorOffset) {
         return 0;
     }
-    return read;
+    return error;
 }
 
 void updatePID(int error) {
@@ -84,7 +88,7 @@ void updatePID(int error) {
 
 void updateMotorSpeed() {
     pidSpeed = kP*P + kI*I + kD*D;
-    pidSpeed = constrain(pidSpeed, 0-motorSpeed-pidSpeed, motorSpeed-pidSpeed);
+    pidSpeed = constrain(pidSpeed, -255+motorSpeed, 255-motorSpeed);
     motorRight->setSpeed(motorSpeed + pidSpeed);
     motorLeft->setSpeed(motorSpeed - pidSpeed);
 }
@@ -102,6 +106,8 @@ void updateFromSerial() {
         int key = Serial.parseInt();
         float value = Serial.parseFloat();
         consts[key] = value;
+        Serial.println(key);
+        Serial.println(value);
     }
     setConsts();
 }
