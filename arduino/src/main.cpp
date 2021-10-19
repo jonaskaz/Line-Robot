@@ -8,13 +8,13 @@
 #define SENSORPIN3 A2 // Middle
 #define NUMREADINGS 3 // Number of readings to average
 
-float motorSpeed = 40;
-float errorOffset = 25;
+float motorSpeed = 30;
+float errorOffset = 30;
 float middleSensorThresh = 100;
 int errorDirection = 1;
-float kP = 0.05;
-float kI = 0.000;
-float kD = 0.05;
+float kP = 0.07;
+float kI = 0.0000;
+float kD = 0.03;
 
 float consts[] = {motorSpeed, errorOffset, kP, kI, kD};
 
@@ -88,7 +88,7 @@ void updatePID(int error) {
 
 void updateMotorSpeed() {
     pidSpeed = kP*P + kI*I + kD*D;
-    pidSpeed = constrain(pidSpeed, -255+motorSpeed, 255-motorSpeed);
+    pidSpeed = constrain(pidSpeed, -200+motorSpeed, 200-motorSpeed);
     motorRight->setSpeed(motorSpeed + pidSpeed);
     motorLeft->setSpeed(motorSpeed - pidSpeed);
 }
@@ -106,8 +106,6 @@ void updateFromSerial() {
         int key = Serial.parseInt();
         float value = Serial.parseFloat();
         consts[key] = value;
-        Serial.println(key);
-        Serial.println(value);
     }
     setConsts();
 }
