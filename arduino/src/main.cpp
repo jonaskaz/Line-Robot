@@ -1,4 +1,4 @@
-#include <ArduinoJson.h>
+//#include <ArduinoJson.h>
 #include <Adafruit_MotorShield.h>
 #include <SPI.h>
 
@@ -7,6 +7,13 @@
 #define SENSORPIN2 A1 // Right
 #define SENSORPIN3 A2 // Middle
 #define NUMREADINGS 3 // Number of readings to average
+
+// Variables to store sensor readings
+float S1Val;
+float S2Val;
+float S3Val;
+float rightMotorSpeed;
+float leftMotorSpeed;
 
 float motorSpeed = 30;
 float errorOffset = 30;
@@ -54,6 +61,7 @@ int getReadings(int sensorPin) {
 
 int getMidSensorReading() {
     int val = getReadings(SENSORPIN3);
+    S3Val = val;
     if (val>middleSensorThresh){
         return 0;
     }
@@ -70,7 +78,9 @@ void setErrorDirection(int outsideError) {
 }
 
 int getError() {
-    int outsideError = getReadings(SENSORPIN1) - getReadings(SENSORPIN2);
+    S1Val = getReadings(SENSORPIN1);
+    S2Val = getReadings(SENSORPIN2);
+    int outsideError = S1Val - S2Val;
     setErrorDirection(outsideError);
     int error = (abs(outsideError) + getMidSensorReading()) * errorDirection;
     if (abs(error)<errorOffset) {
@@ -89,8 +99,23 @@ void updatePID(int error) {
 void updateMotorSpeed() {
     pidSpeed = kP*P + kI*I + kD*D;
     pidSpeed = constrain(pidSpeed, -200+motorSpeed, 200-motorSpeed);
-    motorRight->setSpeed(motorSpeed + pidSpeed);
-    motorLeft->setSpeed(motorSpeed - pidSpeed);
+    rightMotorSpeed = motorSpeed + pidSpeed;
+    leftMotorSpeed = motorSpeed - pidSpeed;
+    motorRight->setSpeed(rightMotorSpeed);
+    motorLeft->setSpeed(leftMotorSpeed);
+    // Output data needed for plotting
+}
+
+void serialPrintGraphData() {
+    Serial.print(S1Val);
+    Serial.print(" ");
+    Serial.print(S2Val);
+    Serial.print(" ");
+    Serial.print(S3Val);
+    Serial.print(" ");
+    Serial.print(rightMotorSpeed);
+    Serial.print(" ");
+    Serial.println(leftMotorSpeed);
 }
 
 void setConsts() {
@@ -114,4 +139,5 @@ void loop() {
     updatePID(getError());
     updateMotorSpeed();
     updateFromSerial();
+    serialPrintGraphData();
 }
